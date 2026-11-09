@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>هروب البتاتس من الزيت</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html,body{height:100%;margin:0;background:#1b1209;font-family:system-ui,"Segoe UI",Tahoma,sans-serif;color:#fff;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
+#w{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center}
+#box{position:relative;height:calc(100% - 96px);aspect-ratio:2/3;max-width:100%;max-height:720px}
+canvas{width:100%;height:100%;display:block;border-radius:12px}
+#ov{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:rgba(27,18,9,.9);border-radius:12px;padding:16px;gap:10px}
+#ov h1{margin:0;font-size:25px;color:#ffc94d}#ov p{margin:0;font-size:15px;line-height:1.8}
+#go{background:#ff7a1a;color:#fff;border:0;border-radius:12px;padding:12px 30px;font:bold 18px inherit;font-family:inherit;cursor:pointer}
+#ctl{direction:ltr;display:flex;gap:8px;margin-top:8px;width:min(100%,460px);padding:0 8px}
+#ctl button{flex:1;height:74px;border-radius:16px;border:0;background:#5a3919;color:#ffc94d;font-size:30px;font-family:inherit}
+#ctl button:active{background:#8a5a2a}
+#ctl #j{flex:1.4;background:#ff7a1a;color:#fff;font-size:20px;font-weight:bold}
+#ctl #p{flex:1.2;background:#2f6f9a;color:#fff;font-size:20px;font-weight:bold}
+#ctl #p:active{background:#4a94c4}
+</style>
+</head>
+<body>
+<div id="w"><div id="box"><canvas id="c" width="400" height="600"></canvas>
+<div id="ov"><h1>🥔موهيهي🥔<br>هروب البطاطس من الزيت</h1>
+<p id="msg">الزيت طالع وراكم اطلعوا على الأرفف قبل ما تتحمّروا 🍟<br> إنتو ماسكين إيد بعض بحبل وإنت اللي بتحركهم موهاهاها هتتحمرو الاتنين.<br><small>الحركة: ◀ ▶ أو الأسهم • النط: مسافة أو نطّ (اللي واقف على رف هو اللي بينط)<br>لو واحد وقع وبقى متعلق بالحبل، دوس <b>شد</b> (أو S) وهو هيطلع لحد التاني<br>🟫 رف عادي • 🟦 طبق طاير • 🟥 رف بيقع وبيرجع بعد شوية • 💗 بيبرّد الزيت</small></p>
+<button id="go">يلا نهرب</button></div></div>
+<div id="ctl"><button id="l">◀</button><button id="p">شدّ 🪢</button><button id="j">نطّ!</button><button id="r">▶</button></div></div>
+<script>
+const cv=document.getElementById('c'),x=cv.getContext('2d'),W=400,H=600,L=115;
+const ov=document.getElementById('ov'),msg=document.getElementById('msg'),go=document.getElementById('go');
+const rnd=(a,b)=>a+Math.random()*(b-a),cl=(v,a,b)=>Math.max(a,Math.min(b,v));
+const deaths=["اتحمّر وبقى شيبسي طماطم لمااو 🍟","اتقلى في الزيت… ريحته حلوة عنجد","كان لازم ينط من بدري","الزيت أسرع منكم، وده مش صعب","اتحمّر وسابلكم الحبل","ماما هتزعل، العشا اتحرق"];
+const pops=["25 متر! لسه محدش اتحمّر","50 متر! الزيت بيشتم فيكم","100 متر بطاطس بس نينجا","200 متر! يا نهار أبيض مين ده؟!"];
+let B,plats,hearts,oil,camY,topY,max,hc,run=false,keys={l:0,r:0,p:0},buf=0,pm=0,popT=0,popTxt='',grace,fr=0;
+function addP(){
+ topY-=rnd(55,90);const w=rnd(95,150),r=Math.random();
+ const p={x:rnd(0,W-w),y:topY,w,t:r<.2?1:r<.38?2:0,bx:0,ph:rnd(0,6),dx:0,s:0,tm:0};
+ if(p.t==1)p.x=rnd(70,W-w-70);p.bx=p.x;
+ plats.push(p);if(Math.random()<.3)hearts.push({p});
+}
+const mk=g=>({x:g?225:175,y:560,vx:0,vy:0,g:1,coy:0,on:null,girl:g,pl:0});
+function reset(){
+ B=[mk(0),mk(1)];plats=[{x:0,y:560,w:W,t:0,bx:0,ph:0,dx:0,s:0,tm:0,base:1}];hearts=[];
+ oil=680;camY=0;topY=560;max=0;hc=0;pm=0;popT=0;grace=3;buf=0;fr=0;while(topY>-250)addP();
+}
+function pop(t,s){popTxt=t;popT=s||110}
+function die(q){
+ run=false;const sc=Math.floor(max/6),who=q.girl?"البنت":"الولد";
+ let b=0;try{b=+localStorage.getItem('pb')||0}catch(e){}b=Math.max(b,sc);try{localStorage.setItem('pb',b)}catch(e){}
+ msg.innerHTML=`<b>${who} ${deaths[Math.random()*deaths.length|0]} 💀</b><br><br>طلعتوا <b>${sc}</b> متر • قلوب: ${hc} 💗<br>أحسن رقم: ${b} متر`;
+ go.textContent="نحاول تاني";ov.style.display='flex';
+}
+function step(){
+ fr++;const dir=keys.r-keys.l;buf--;
+ for(const p of plats){p.dx=0;
+  if(p.t==1){const n=p.bx+Math.sin(fr/55+p.ph)*55;p.dx=n-p.x;p.x=n}
+  if(p.t==2){if(p.s==1){p.tm++;if(p.tm>40){p.s=2;p.tm=0}}else if(p.s==2){p.tm++;if(p.tm>150){p.s=0;p.tm=0}}}}
+ for(const q of B){q.vx+=(dir*210-q.vx)*.3;q.vy+=.42;q.coy--;q.pl=0;if(q.on&&q.on.s!=2)q.x+=q.on.dx}
+ // pull: the lower one climbs to the higher one
+ const hi=B[0].y<=B[1].y?B[0]:B[1],lo=hi===B[0]?B[1]:B[0];
+ if(keys.p&&lo.y>hi.y-28){lo.pl=1;lo.on=null;lo.coy=0;lo.vy+=(-7.5-lo.vy)*.3;lo.vx+=(cl((hi.x-lo.x)*4,-220,220)-lo.vx)*.3}
+ for(const q of B){q.py=q.y;q.x+=q.vx/60;q.y+=q.vy}
+ // rope
+ const a=B[0],b=B[1];let dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy)||1;
+ if(d>L&&!(a.pl||b.pl)){
+  const nx=dx/d,ex=d-L;let wa=a.on?0:1,wb=b.on?0:1,ny=dy/d;
+  if(!wa&&!wb){wa=wb=.5;ny=0}else{const s=wa+wb;wa/=s;wb/=s}
+  a.x+=nx*ex*wa;a.y+=ny*ex*wa;b.x-=nx*ex*wb;b.y-=ny*ex*wb;
+  const n2=Math.hypot(nx,ny)||1,ux=nx/n2,uy=ny/n2;
+  if(wa){const v=a.vx*ux+a.vy*uy;if(v<0){a.vx-=v*ux;a.vy-=v*uy}}
+  if(wb){const v=b.vx*ux+b.vy*uy;if(v>0){b.vx-=v*ux;b.vy-=v*uy}}
+ }
+ if(d<34){const s=(34-d)/2;a.x-=s*(dx>=0?1:-1);b.x+=s*(dx>=0?1:-1)}
+ for(const q of B){
+  q.g=0;if(q.x<12){q.x=12;q.vx=0}if(q.x>W-12){q.x=W-12;q.vx=0}
+  if(q.vy>=0)for(const p of plats){if(p.s==2)continue;
+   if(q.x>p.x-14&&q.x<p.x+p.w+14&&q.py<=p.y+3&&q.y>=p.y){q.y=p.y;q.vy=0;q.g=1;q.coy=8;q.on=p;if(p.t==2&&!p.s){p.s=1;p.tm=0}break}}
+  if(!q.g)q.on=null;
+ }
+ if(buf>0){let j=0;for(const q of B)if(q.coy>0&&!q.pl){q.vy=-10.5;q.g=0;q.coy=0;q.on=null;j=1}if(j)buf=0}
+ const top=Math.min(B[0].y,B[1].y),bot=Math.max(B[0].y,B[1].y);
+ max=Math.max(max,560-top);
+ if(grace>0){grace-=1/60;pop(grace>0?"الزيت هيسخن… "+Math.ceil(grace):"اجري!!",40)}
+ else oil-=(.35+Math.min(.8,max/3500));
+ hearts=hearts.filter(h=>{const hx=h.p.x+h.p.w/2,hy=h.p.y-35;
+  if(h.p.s!=2)for(const q of B)if(Math.hypot(q.x-hx,q.y-18-hy)<42){oil+=55;hc++;return false}return true});
+ camY+=(Math.min(camY,top-400)-camY)*.1;
+ if(bot-camY>H-50)camY+=(bot-H+50-camY)*.15;
+ while(topY>camY-150)addP();
+ plats=plats.filter(p=>p.base||p.y<oil+250);
+ const m=Math.floor(max/6/25);if(m>pm){pm=m;pop(m<=pops.length?pops[m-1]:m*25+" متر! إنت مجنون؟!")}
+ if(popT>0)popT--;
+ for(const q of B)if(q.y>oil+6){die(q);break}
+}
+function pot(q){
+ const sq=q.g?1:1+Math.min(.12,Math.abs(q.vy)*.012);
+ x.save();x.translate(q.x,q.y-camY-17);x.scale(1/sq,sq);
+ x.fillStyle=q.girl?'#dba867':'#c99a5b';x.strokeStyle='#6b4521';x.lineWidth=2;
+ x.beginPath();x.ellipse(0,0,17,18,0,0,7);x.fill();x.stroke();
+ x.fillStyle='#a77a44';[[-7,5],[8,-3],[3,10]].forEach(s=>{x.beginPath();x.arc(s[0],s[1],1.8,0,7);x.fill()});
+ const lk=cl(q.vx/120,-1.5,1.5);
+ x.fillStyle='#fff';x.beginPath();x.arc(-6,-4,4.5,0,7);x.arc(6,-4,4.5,0,7);x.fill();
+ x.fillStyle='#222';x.beginPath();x.arc(-6+lk,-4,2.2,0,7);x.arc(6+lk,-4,2.2,0,7);x.fill();
+ x.strokeStyle='#6b4521';x.lineWidth=1.6;x.beginPath();x.arc(0,q.g?3:5,q.g?4:3,q.g?.1:3.3,q.g?3.04:6.1);x.stroke();
+ if(q.girl){x.fillStyle='rgba(255,111,165,.5)';x.beginPath();x.arc(-11,4,3,0,7);x.arc(11,4,3,0,7);x.fill();x.font='22px serif';x.textAlign='center';x.fillText('🎀',0,-17)}
+ x.restore();
+}
+function draw(){
+ const g=x.createLinearGradient(0,0,0,H);g.addColorStop(0,'#2a1a0e');g.addColorStop(1,'#4a2c14');x.fillStyle=g;x.fillRect(0,0,W,H);
+ x.strokeStyle='rgba(255,255,255,.05)';x.lineWidth=1;
+ for(let i=0;i<15;i++){const yy=((i*60-camY*.5)%900+900)%900-60;x.beginPath();x.moveTo(0,yy);x.lineTo(W,yy);x.stroke()}
+ for(const p of plats){const y=p.y-camY;if(y<-20||y>H+20)continue;
+  if(p.s==2){const f=p.tm>120?(p.tm-120)/30:0;if(f<=0)continue;x.globalAlpha=f*.6}
+  const sh=p.s==1?Math.sin(fr*2)*2:0;
+  x.fillStyle=p.t==1?'#5aa9d6':p.t==2?'#c2503a':'#9a6b3a';x.fillRect(p.x+sh,y,p.w,13);
+  x.fillStyle='rgba(255,255,255,.25)';x.fillRect(p.x+sh,y,p.w,3);x.globalAlpha=1}
+ x.font='24px serif';x.textAlign='center';
+ for(const h of hearts){if(h.p.s==2)continue;x.fillText('💗',h.p.x+h.p.w/2,h.p.y-camY-28+Math.sin(fr/10)*3)}
+ const a=B[0],b=B[1],d=Math.hypot(b.x-a.x,b.y-a.y),sag=Math.max(0,L-d)*.55;
+ x.strokeStyle=keys.p?'#8fd0ff':'#e8c07a';x.lineWidth=5;x.lineCap='round';
+ x.beginPath();x.moveTo(a.x,a.y-camY-15);x.quadraticCurveTo((a.x+b.x)/2,(a.y+b.y)/2-camY-15+sag,b.x,b.y-camY-15);x.stroke();
+ pot(a);pot(b);
+ const oy=oil-camY;
+ const og=x.createLinearGradient(0,oy,0,oy+140);og.addColorStop(0,'#ffb300');og.addColorStop(1,'#c25a00');
+ x.fillStyle=og;x.beginPath();x.moveTo(0,H+10);for(let i=0;i<=W;i+=10)x.lineTo(i,oy+Math.sin(i/22+fr/12)*5);x.lineTo(W,H+10);x.fill();
+ x.fillStyle='rgba(255,230,120,.8)';
+ for(let i=0;i<7;i++){const bx=(i*61+fr*.7*(i%2?1:-1)+400)%W,bb=oy+14+((fr*(.6+i*.1)+i*37)%60);x.beginPath();x.arc(bx,bb,2+i%3,0,7);x.fill()}
+ x.fillStyle='#fff';x.font='bold 18px system-ui';x.textAlign='right';x.fillText(Math.floor(max/6)+' متر',W-12,26);x.textAlign='left';x.fillText('💗 '+hc,12,26);
+ if(popT>0){x.globalAlpha=Math.min(1,popT/25);x.font='bold 22px system-ui';x.fillStyle='#ffc94d';x.textAlign='center';x.fillText(popTxt,W/2,95);x.globalAlpha=1}
+}
+function loop(){if(run)step();draw();requestAnimationFrame(loop)}
+go.onclick=()=>{ov.style.display='none';reset();run=true};
+const K={ArrowLeft:'l',a:'l',A:'l',ArrowRight:'r',d:'r',D:'r',ArrowDown:'p',s:'p',S:'p',Shift:'p'};
+addEventListener('keydown',e=>{const k=K[e.key];if(k)keys[k]=1;if([' ','ArrowUp','w','W'].includes(e.key)){e.preventDefault();buf=9}});
+addEventListener('keyup',e=>{const k=K[e.key];if(k)keys[k]=0});
+function hold(id,k){const el=document.getElementById(id),on=e=>{e.preventDefault();keys[k]=1},off=e=>{e.preventDefault();keys[k]=0};
+ el.addEventListener('pointerdown',on);el.addEventListener('pointerup',off);el.addEventListener('pointerleave',off);el.addEventListener('pointercancel',off)}
+hold('l','l');hold('r','r');hold('p','p');
+document.getElementById('j').addEventListener('pointerdown',e=>{e.preventDefault();buf=9});
+reset();loop();
+</script>
+</body>
+</html>
